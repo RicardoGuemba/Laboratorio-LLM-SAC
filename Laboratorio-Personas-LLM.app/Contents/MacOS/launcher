@@ -1,0 +1,147 @@
+#!/bin/bash
+# Laboratório Personas LLM — launcher (Laboratorio-Personas-LLM.app)
+
+APP_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(cd "$APP_DIR/.." && pwd)"
+cd "$ROOT"
+
+PORT=8765
+HOST="127.0.0.1"
+PID_FILE="$ROOT/.lab-personas-llm.pid"
+LOG_FILE="$ROOT/.lab-personas-llm.log"
+LAUNCHER_LOG="$ROOT/.lab-personas-llm-launcher.log"
+LEGACY_PID_FILE="$ROOT/.debates.pid"
+VENV="$ROOT/.venv"
+
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
+exec >>"$LAUNCHER_LOG" 2>&1
+echo "=== $(date) === Laboratório Personas LLM launcher ==="
+
+notify() {
+    osascript -e "display notification \"$1\" with title \"Laboratório Personas LLM\"" 2>/dev/null || true
+}
+
+alert() {
+    osascript -e "display alert \"Laboratório Personas LLM\" message \"$1\" as warning buttons {\"OK\"} default button \"OK\"" 2>/dev/null || true
+}
+
+on_error() {
+    local code=$?
+    echo "ERRO: launcher falhou (exit $code)"
+    alert "Falha ao iniciar o Laboratório (código $code). Abra o arquivo .lab-personas-llm-launcher.log na pasta do projeto para detalhes."
+    exit "$code"
+}
+trap on_error ERR
+
+set -euo pipefail
+
+health_ok() {
+    curl -sf "http://${HOST}:${PORT}/health" >/dev/null 2>&1
+}
+
+port_pids() {
+    lsof -ti "tcp:${PORT}" -sTCP:LISTEN 2>/dev/null || true
+}
+
+stop_pid() {
+    local pid="$1"
+    [[ -n "$pid" ]] || return 0
+    if kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null || true
+        sleep 1
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+}
+
+open_app() {
+    open "http://${HOST}:${PORT}"
+    notify "Laboratório aberto no navegador!"
+    echo "Laboratório disponível em http://${HOST}:${PORT}"
+}
+
+# Servidor já saudável — reutiliza instância existente.
+if health_ok; then
+    open_app
+    exit 0
+fi
+
+# Encerra instâncias registradas e processos presos na porta.
+for legacy_pid_file in "$PID_FILE" "$LEGACY_PID_FILE"; do
+    if [[ -f "$legacy_pid_file" ]]; then
+        stop_pid "$(cat "$legacy_pid_file")"
+        rm -f "$legacy_pid_file"
+    fi
+done
+
+while read -r stale_pid; do
+    [[ -n "$stale_pid" ]] && stop_pid "$stale_pid"
+done < <(port_pids)
+
+sleep 0.5
+
+if health_ok; then
+    open_app
+    exit 0
+fi
+
+PYTHON=""
+for candidate in \
+    "$VENV/bin/python3" \
+    /opt/homebrew/bin/python3 \
+    /usr/local/bin/python3 \
+    /usr/bin/python3; do
+    if [[ -x "$candidate" ]]; then
+        PYTHON="$candidate"
+        break
+    fi
+done
+
+if [[ -z "$PYTHON" ]]; then
+    alert "Python 3 não encontrado. Instale Python 3.11+ ou rode: bash scripts/install_deps.sh"
+    exit 1
+fi
+echo "Python: $PYTHON"
+
+if [[ ! -d "$VENV" ]]; then
+    notify "Criando ambiente Python (primeira execução)..."
+    "$PYTHON" -m venv "$VENV"
+    "$VENV/bin/pip" install -q -r "$ROOT/requirements.txt"
+fi
+
+if [[ ! -f "$ROOT/backend/static/index.html" ]]; then
+    if ! command -v npm &>/dev/null; then
+        alert "Node.js não encontrado. Rode no Terminal: bash scripts/install_deps.sh"
+        exit 1
+    fi
+    notify "Buildando frontend (primeira execução)..."
+    bash "$ROOT/scripts/build.sh"
+fi
+
+if ! curl -sf "http://127.0.0.1:1234/v1/models" >/dev/null 2>&1; then
+    alert "LM Studio offline na porta 1234. Inicie o server no LM Studio. O Laboratório abrirá mesmo assim."
+fi
+
+export PYTHONPATH="$ROOT"
+nohup "$VENV/bin/python3" -m uvicorn backend.main:app --host "$HOST" --port "$PORT" >>"$LOG_FILE" 2>&1 &
+SERVER_PID=$!
+echo "$SERVER_PID" > "$PID_FILE"
+echo "Servidor PID: $SERVER_PID"
+
+for _ in $(seq 1 40); do
+    if health_ok; then
+        open_app
+        echo "Laboratório iniciado com sucesso."
+        exit 0
+    fi
+    if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+        echo "Servidor encerrou antes do health check."
+        break
+    fi
+    sleep 0.5
+done
+
+stop_pid "$SERVER_PID"
+rm -f "$PID_FILE"
+alert "Servidor não iniciou a tempo. Verifique .lab-personas-llm.log na pasta do projeto."
+exit 1

@@ -1,0 +1,49 @@
+lmstudio:
+  base_url: http://127.0.0.1:1234/v1
+  debaters:
+    rico:
+      model: google/gemma-4-12b
+      model_family: gemma
+      thinking_default: false
+      max_tokens_direct: 150
+      max_tokens_thinking: 600
+      timeout_s_direct: 90
+      timeout_s_thinking: 300
+      temperature: 0.55
+      top_p: 0.85
+    pobre:
+      model: lfm2.5-1.2b-thinking-mlx
+      model_family: lfm
+      thinking_default: false
+      max_tokens_direct: 150
+      max_tokens_thinking: 600
+      timeout_s_direct: 90
+      timeout_s_thinking: 180
+      temperature: 0.7
+      top_p: 0.9
+
+debate:
+  max_rounds: 3
+  context_turns: 6
+  topic_relevance_min: 0.12
+  topic_min_tokens: 2
+  topic_retry: true
+  context_retry: true
+  phases:
+    - opening
+    - argument
+    - replica
+    - treplica
+  word_limits:
+    replica: 80
+    treplica: 50
+
+casual:
+  context_turns: 10
+  max_sentences: 5
+  auto_advance_delay_s: 0.8
+  topic_timeout_s: 20
+
+server:
+  host: 127.0.0.1
+  port: 8765

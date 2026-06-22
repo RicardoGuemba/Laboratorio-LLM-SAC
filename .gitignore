@@ -1,0 +1,15 @@
+.venv/
+frontend/node_modules/
+frontend/dist/
+backend/static/
+__pycache__/
+*.pyc
+.DS_Store
+.lab-personas-llm.log
+.lab-personas-llm-launcher.log
+.lab-personas-llm.pid
+.debates.log
+.debates-launcher.log
+.debates.pid
+.cursor/
+.pytest_cache/
