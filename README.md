@@ -53,6 +53,7 @@ cd frontend && npm run test      # frontend: avatares e UI (15 testes)
 
 ## Documentação
 
+- [`docs/GUIA_DIDATICO.md`](docs/GUIA_DIDATICO.md) — explicação didática, casos de uso, diagramas e arquitetura
 - [`docs/SISTEMA.md`](docs/SISTEMA.md) — arquitetura e fluxos
 - [`docs/CONTEXT.md`](docs/CONTEXT.md) — índice do projeto
 - [`knowledge/README.md`](knowledge/README.md) — schema dos arquivos RAG
