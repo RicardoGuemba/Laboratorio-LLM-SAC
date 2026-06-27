@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 
 from backend.config import load_config
-from backend.debate.llm_params import is_chat_model, merge_llm_params
+from backend.llm.llm_params import is_chat_model, merge_llm_params
 
 
 class LMStudioClient:
@@ -17,7 +17,7 @@ class LMStudioClient:
     def _refresh_config(self) -> None:
         config = load_config()
         self.base_url = config["lmstudio"]["base_url"].rstrip("/")
-        self.debaters = config["lmstudio"]["debaters"]
+        self.roles = config["lmstudio"]["roles"]
 
     async def health_check(self) -> dict[str, Any]:
         self._refresh_config()
@@ -39,18 +39,17 @@ class LMStudioClient:
         result = await self.health_check()
         return result.get("models", [])
 
-    def get_debater_config(self, debater: str, profile_key: str | None = None) -> dict[str, Any]:
-        return dict(self.debaters[debater])
+    def get_role_config(self, role: str, profile_key: str | None = None) -> dict[str, Any]:
+        return dict(self.roles[role])
 
-    def default_model(self, debater: str) -> str:
-        return self.get_debater_config(debater)["model"]
+    def default_model(self, role: str) -> str:
+        return self.get_role_config(role)["model"]
 
     def default_models(self) -> dict[str, str]:
-        return {name: cfg["model"] for name, cfg in self.debaters.items()}
+        return {name: cfg["model"] for name, cfg in self.roles.items()}
 
-    def resolve_default_model(self, debater: str, available: list[str]) -> str:
-        """Prefere modelo configurado; aceita qualquer LLM de chat disponível."""
-        cfg = self.get_debater_config(debater)
+    def resolve_default_model(self, role: str, available: list[str]) -> str:
+        cfg = self.get_role_config(role)
         preferred = cfg.get("model", "")
         family = (cfg.get("model_family") or "").lower()
         chat_models = [m for m in available if is_chat_model(m)]
@@ -78,15 +77,12 @@ class LMStudioClient:
         return chat_models[0]
 
     def resolved_defaults(self, available: list[str]) -> dict[str, str]:
-        return {
-            name: self.resolve_default_model(name, available)
-            for name in self.debaters
-        }
+        return {name: self.resolve_default_model(name, available) for name in self.roles}
 
     def pick_model(
         self,
         override: str | None,
-        debater: str,
+        role: str,
         available: list[str],
     ) -> str:
         chat_models = [m for m in available if is_chat_model(m)] if available else []
@@ -101,15 +97,15 @@ class LMStudioClient:
                 f"Modelos disponíveis: {', '.join(chat_models)}"
             )
 
-        resolved = self.resolve_default_model(debater, chat_models)
+        resolved = self.resolve_default_model(role, chat_models)
         if not chat_models:
             return override or resolved
         if resolved in chat_models:
             return resolved
         return chat_models[0]
 
-    def resolve_model(self, debater: str, override: str | None) -> str:
-        return override or self.default_model(debater)
+    def resolve_model(self, role: str, override: str | None) -> str:
+        return override or self.default_model(role)
 
     def _resolve_limits(self, cfg: dict[str, Any], thinking: bool) -> tuple[int, float]:
         if thinking:
@@ -145,7 +141,7 @@ class LMStudioClient:
 
     async def stream_completion(
         self,
-        debater: str,
+        role: str,
         messages: list[dict[str, str]],
         *,
         thinking: bool = False,
@@ -154,8 +150,8 @@ class LMStudioClient:
         generation_overrides: dict[str, Any] | None = None,
     ) -> AsyncGenerator[dict[str, str], None]:
         self._refresh_config()
-        cfg = self.get_debater_config(debater, profile_key)
-        model_name = self.resolve_model(debater, model)
+        cfg = self.get_role_config(role, profile_key)
+        model_name = self.resolve_model(role, model)
         payload = self._build_payload(
             cfg,
             messages,
@@ -194,7 +190,7 @@ class LMStudioClient:
 
     async def complete_non_stream(
         self,
-        debater: str,
+        role: str,
         messages: list[dict[str, str]],
         *,
         thinking: bool = False,
@@ -203,8 +199,8 @@ class LMStudioClient:
         generation_overrides: dict[str, Any] | None = None,
     ) -> tuple[str, str]:
         self._refresh_config()
-        cfg = self.get_debater_config(debater, profile_key)
-        model_name = self.resolve_model(debater, model)
+        cfg = self.get_role_config(role, profile_key)
+        model_name = self.resolve_model(role, model)
         payload = self._build_payload(
             cfg,
             messages,

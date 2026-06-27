@@ -1,38 +1,21 @@
-export type DebaterId = "rico" | "pobre";
-
-export type Gesture =
-  | "talk"
-  | "deboche"
-  | "alegria"
-  | "rejeicao"
-  | "nod"
-  | "head_shake"
-  | "facepalm"
-  | "raised_brow"
-  | "shrug"
-  | "slow_blink"
-  | "confused";
-
-export type DebatePhase = "opening" | "argument" | "replica" | "treplica" | "chat";
-
-export type SessionMode = "debate" | "casual";
+export type RoleId = "cliente" | "sac";
 
 export interface TurnRecord {
   id: string;
-  debater: DebaterId;
-  phase: DebatePhase;
-  round_num: number;
+  role: RoleId;
   text: string;
+  title?: string | null;
   thinking?: string | null;
-  reaction_from_peer?: ReactionEvent | null;
   latency_ms?: number | null;
   timestamp: string;
 }
 
-export interface Scoreboard {
-  buzzwords: number;
-  yellow_cards: number;
-  applause: number;
+export interface RagChunk {
+  doc_id: string;
+  section: string;
+  text: string;
+  score: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface LlmParams {
@@ -41,60 +24,38 @@ export interface LlmParams {
   max_tokens?: number;
 }
 
-export interface DebateState {
+export interface SacSession {
   id: string;
-  topic: string;
-  mode?: SessionMode;
-  topic_starter?: DebaterId | null;
-  rico_profile: string;
-  pobre_profile: string;
-  rico_profile_name?: string;
-  pobre_profile_name?: string;
-  rico_model: string;
-  pobre_model: string;
-  rico_position: string;
-  pobre_position: string;
-  rico_thinking?: boolean;
-  pobre_thinking?: boolean;
-  rico_skills?: string[];
-  pobre_skills?: string[];
-  rico_llm_params?: LlmParams;
-  pobre_llm_params?: LlmParams;
+  cliente_profile: string;
+  sac_profile: string;
+  cliente_profile_name?: string;
+  sac_profile_name?: string;
+  cliente_model: string;
+  sac_model: string;
+  cliente_thinking?: boolean;
+  sac_thinking?: boolean;
+  cliente_skills?: string[];
+  sac_skills?: string[];
+  cliente_llm_params?: LlmParams;
+  sac_llm_params?: LlmParams;
   status: string;
-  current_round: number;
+  complaint_title: string;
+  complaint_text: string;
+  response_text: string;
+  category?: string | null;
+  rag_chunks: RagChunk[];
   turns: TurnRecord[];
-  scoreboard: Scoreboard;
-  next_turn?: {
-    debater: DebaterId;
-    phase: DebatePhase;
-    round_num: number;
-  };
-  is_finished?: boolean;
-}
-
-export interface ReactionEvent {
-  score: number;
-  gesture: Gesture;
-  reaction: string;
-  one_liner: string;
-  buzzword_count?: number;
-  yellow_card?: boolean;
-  listener?: DebaterId;
-  speaker?: DebaterId;
 }
 
 export interface StreamEvent {
   type: string;
-  debater?: DebaterId;
-  listener?: DebaterId;
-  speaker?: DebaterId;
+  role?: RoleId;
   content?: string;
-  phase?: DebatePhase;
-  round_num?: number;
-  gesture?: Gesture;
-  one_liner?: string;
-  turn?: TurnRecord;
-  scoreboard?: Scoreboard;
+  category?: string;
+  manual?: boolean;
+  chunks?: RagChunk[];
+  turn?: Partial<TurnRecord> & { title?: string };
+  session?: SacSession;
   is_finished?: boolean;
   message?: string;
   fallback?: string;
@@ -121,42 +82,54 @@ export interface PersonaDefaults {
 }
 
 export interface PersonasConfig {
-  defaults: Record<DebaterId, PersonaDefaults>;
-  rico: { profiles: Record<string, PersonaProfile>; skills: Record<string, PersonaSkill> };
-  pobre: { profiles: Record<string, PersonaProfile>; skills: Record<string, PersonaSkill> };
+  defaults: Record<RoleId, PersonaDefaults>;
+  cliente: { profiles: Record<string, PersonaProfile>; skills: Record<string, PersonaSkill> };
+  sac: { profiles: Record<string, PersonaProfile>; skills: Record<string, PersonaSkill> };
 }
 
-export interface DebateStartConfig {
-  mode: SessionMode;
-  topic: string;
-  ricoProfile: string;
-  pobreProfile: string;
-  ricoModel: string;
-  pobreModel: string;
-  ricoThinking: boolean;
-  pobreThinking: boolean;
-  ricoSkills: string[];
-  pobreSkills: string[];
-  ricoLlmParams: LlmParams;
-  pobreLlmParams: LlmParams;
+export interface SacStartConfig {
+  clienteProfile: string;
+  sacProfile: string;
+  clienteModel: string;
+  sacModel: string;
+  clienteThinking: boolean;
+  sacThinking: boolean;
+  clienteSkills: string[];
+  sacSkills: string[];
+  clienteLlmParams: LlmParams;
+  sacLlmParams: LlmParams;
 }
 
 export interface ModelsCatalog {
   models: string[];
-  defaults: { rico: string; pobre: string };
-  configured?: { rico: string; pobre: string };
+  defaults: { cliente_truepaleo: string; truepaleo_sac: string };
+  configured?: { cliente_truepaleo: string; truepaleo_sac: string };
 }
 
-export const PHASE_LABELS: Record<DebatePhase, string> = {
-  opening: "Abertura",
-  argument: "Argumento",
-  replica: "Réplica",
-  treplica: "Tréplica",
-  chat: "Conversa",
-};
+export interface KnowledgeFile {
+  id: string;
+  path: string;
+  directory: string;
+  title: string;
+  metadata: Record<string, unknown>;
+  valid: boolean;
+  errors: string[];
+  size_bytes: number;
+}
+
+export interface KnowledgeStats {
+  doc_count: number;
+  chunk_count: number;
+  last_indexed: string | null;
+}
 
 export const DEFAULT_LLM_PARAMS: Required<LlmParams> = {
   temperature: 0.7,
   top_p: 0.9,
   max_tokens: 256,
+};
+
+export const ROLE_LABELS: Record<RoleId, string> = {
+  cliente: "cliente_truepaleo",
+  sac: "Truepaleo-SAC",
 };

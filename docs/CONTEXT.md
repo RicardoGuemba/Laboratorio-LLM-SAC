@@ -1,28 +1,30 @@
 # Contexto do projeto
 
-Documentação detalhada de **uso e arquitetura**: [`SISTEMA.md`](SISTEMA.md).
+Documentação detalhada: [`SISTEMA.md`](SISTEMA.md).
 
 ## Resumo
 
-- **O quê:** simulador de diálogo entre dois LLMs locais com personas editáveis.
-- **Modos:** debate formal (12 turnos, placar) e conversa casual (infinita, automática).
-- **Stack:** FastAPI + React + LM Studio (porta 1234) + launcher macOS.
+- **O quê:** simulador SAC TRUEPALEO — reclamação gerada por LLM cliente, resposta gerada por LLM SAC com RAG BM25.
+- **Comando:** digite `simule` na barra de comando para iniciar um ciclo.
+- **Stack:** FastAPI + React + LM Studio (porta 1234) + rank-bm25.
 
 ## Links
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [SISTEMA.md](SISTEMA.md) | Uso, arquitetura, fluxos, estrutura |
-| [DEBATE_RULES.md](DEBATE_RULES.md) | Regras do debate e personas |
+| [SISTEMA.md](SISTEMA.md) | Uso, arquitetura, fluxos |
 | [README.md](../README.md) | Instalação e início rápido |
+| [knowledge/README.md](../knowledge/README.md) | Schema RAG |
 
-## LM Studio (checklist)
+## LM Studio
 
 1. Start Server na porta **1234**
-2. JIT + Auto-Evict ON
-3. Conferir nomes: `GET http://127.0.0.1:1234/v1/models`
-4. Ajustar [`config.yaml`](../config.yaml) se necessário
+2. Carregue modelos para `cliente_truepaleo` e `truepaleo_sac`
+3. Ajuste [`config.yaml`](../config.yaml) se necessário
 
-## Entrada recomendada
+## Roles
 
-Duplo clique em **`Abrir Laboratorio Personas LLM.app`** (não confundir com `Laboratorio-Personas-LLM.app`, que é o bundle interno do servidor).
+| Role | Função |
+|------|--------|
+| `cliente_truepaleo` | Gera reclamações realistas estilo Reclame AQUI |
+| `truepaleo_sac` | Responde com empatia, políticas e contexto RAG |

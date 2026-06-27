@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { DebaterId, PersonasConfig } from "../types";
-import { profileDisplayName } from "../utils/personaLabel";
+import type { PersonasConfig, RoleId } from "../types";
+import { roleDisplayName } from "../utils/personaLabel";
 
 type Kind = "profiles" | "skills";
 
@@ -55,7 +55,7 @@ function estimateSkillLines(form: SkillForm): number {
 
 export function PersonaEditor({ open, onClose, onUpdated }: PersonaEditorProps) {
   const [config, setConfig] = useState<PersonasConfig | null>(null);
-  const [debater, setDebater] = useState<DebaterId>("rico");
+  const [debater, setDebater] = useState<RoleId>("cliente");
   const [kind, setKind] = useState<Kind>("profiles");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState<ProfileForm>(emptyProfile());
@@ -224,14 +224,14 @@ export function PersonaEditor({ open, onClose, onUpdated }: PersonaEditorProps) 
     <div className="persona-overlay" onClick={onClose}>
       <div className="persona-editor" onClick={(e) => e.stopPropagation()}>
         <header className="persona-editor-header">
-          <h2>Laboratório — Perfis & Skills</h2>
+          <h2>TRUEPALEO — Perfis & Skills</h2>
           <button type="button" className="btn btn--ghost" onClick={onClose}>
             Fechar
           </button>
         </header>
 
         <div className="persona-tabs">
-          {(["rico", "pobre"] as DebaterId[]).map((d) => (
+          {(["cliente", "sac"] as RoleId[]).map((d) => (
             <button
               key={d}
               type="button"
@@ -241,7 +241,7 @@ export function PersonaEditor({ open, onClose, onUpdated }: PersonaEditorProps) 
                 startNew();
               }}
             >
-              {profileDisplayName(config, d, config?.defaults[d]?.profile ?? "")}
+              {roleDisplayName(d)}
             </button>
           ))}
           <span className="persona-tab-sep" />

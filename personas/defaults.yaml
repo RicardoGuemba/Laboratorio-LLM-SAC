@@ -1,8 +1,10 @@
-pobre:
-  profile: empresaria
+cliente:
+  profile: cliente_irritado
   skills:
-  - reducao_dimensional
-rico:
-  profile: herdeira_exigente
+    - mencionar_pedido
+    - tom_emocional
+sac:
+  profile: atendente_empatico
   skills:
-  - jargao_premium
+    - politica_reembolso
+    - de_escalacao

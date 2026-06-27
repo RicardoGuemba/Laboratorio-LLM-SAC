@@ -1,97 +1,72 @@
-# Laboratório Personas LLM
+# TRUEPALEO SAC Simulator
 
-Simulador de debate e conversa casual com personas configuráveis: qualquer LLM do **LM Studio** pode ser debatedor, com **Perfis** (personalidade) e **Skills** editáveis na interface.
+Simulador de atendimento ao cliente (SAC) da **TRUEPALEO**: o LLM `cliente_truepaleo` gera reclamações realistas e o `Truepaleo-SAC` responde usando skills configuráveis e RAG BM25 sobre histórico do Reclame AQUI.
 
-## Início rápido (duplo clique)
+## Início rápido
 
 1. Instale **Python 3.11+**, **Node 18+** e **LM Studio**
 2. No LM Studio: Start Server na porta **1234**, JIT + Auto-Evict ON
-3. Primeira vez — instale dependências:
+3. Primeira vez:
 
 ```bash
 bash scripts/install_deps.sh
 bash scripts/preparar-app.sh
 ```
 
-4. **Duplo clique em `Abrir Laboratorio Personas LLM.app`**
-
-   Alternativa técnica: `Laboratorio-Personas-LLM.app` (botão direito → Abrir na 1ª vez)
-
-   Se nada abrir:
+4. Desenvolvimento — terminal 1 (backend):
 
 ```bash
-bash scripts/preparar-app.sh
-```
-
-Para encerrar: duplo clique em `Laboratorio-Personas-LLM-Stop.command`
-
-### Problemas comuns
-
-- **“Servidor não iniciou a tempo”** — porta 8765 em uso. Rode `Laboratorio-Personas-LLM-Stop.command` e tente de novo.
-- **LM Studio offline** — abra o LM Studio e inicie o servidor na porta 1234.
-- **Logs:** `.lab-personas-llm.log` (servidor) e `.lab-personas-llm-launcher.log` (launcher)
-
-## Modos
-
-| Modo | Descrição |
-|------|-----------|
-| **Debate formal** | Tema definido, 12 turnos, placar, avanço manual |
-| **Conversa casual** | Tema automático, papo infinito, pare quando quiser |
-
-Ver [`docs/SISTEMA.md`](docs/SISTEMA.md) para uso completo e arquitetura.
-
-## Desenvolvimento
-
-Terminal 1 — backend:
-
-```bash
-cd /caminho/Laboratório-personas-LLM
 source .venv/bin/activate
+pip install -r requirements.txt
 PYTHONPATH=. uvicorn backend.main:app --reload --host 127.0.0.1 --port 8765
 ```
 
-Terminal 2 — frontend:
+Terminal 2 (frontend):
 
 ```bash
-cd frontend && npm run dev
+cd frontend && npm install && npm run dev
 ```
 
-Abra `http://localhost:5173` (proxy para API).
+Abra `http://localhost:5173`
 
-## Build manual
+## Uso
 
-```bash
-bash scripts/build.sh
-PYTHONPATH=. uvicorn backend.main:app --host 127.0.0.1 --port 8765
-```
+1. Configure perfis, skills e modelos LM Studio para **cliente_truepaleo** e **Truepaleo-SAC**
+2. Clique em **Aplicar configuração**
+3. Na barra de comando, digite `simule` e pressione Enter
+4. A reclamação é gerada, o RAG recupera contexto e a resposta SAC é exibida
+
+## Base de conhecimento (RAG)
+
+Arquivos Markdown em `knowledge/reclame_aqui/` e `knowledge/policies/`. Gerenciáveis pela interface **Base de Conhecimento**. Indexação BM25 automática no startup.
+
+## Configuração
+
+Edite [`config.yaml`](config.yaml) — modelos LM Studio por role, parâmetros SAC e RAG.
 
 ## Testes
 
 ```bash
-pytest tests/                    # unitários (mock LM Studio)
-python tests/integration/test_debate_e2e.py   # E2E debate (servidor + LM live)
-python tests/integration/test_casual_e2e.py   # E2E conversa casual
+pytest tests/                    # backend: unitários + funcionais (21 testes)
+cd frontend && npm run test      # frontend: avatares e UI (15 testes)
 ```
-
-## Configuração
-
-Edite [`config.yaml`](config.yaml) — modelos LM Studio, timeouts, regras de debate/casual.
 
 ## Documentação
 
-- [`docs/SISTEMA.md`](docs/SISTEMA.md) — **uso e arquitetura**
-- [`docs/DEBATE_RULES.md`](docs/DEBATE_RULES.md) — fases, personas, placar
+- [`docs/SISTEMA.md`](docs/SISTEMA.md) — arquitetura e fluxos
 - [`docs/CONTEXT.md`](docs/CONTEXT.md) — índice do projeto
+- [`knowledge/README.md`](knowledge/README.md) — schema dos arquivos RAG
 
 ## Estrutura
 
 ```
-Abrir Laboratorio Personas LLM.app/  ← duplo clique (entrada)
-Laboratorio-Personas-LLM.app/        ← bundle interno do servidor
-backend/                             ← FastAPI + static build
-frontend/src/                        ← React + avatares SVG
-personas/                            ← perfis e skills (Markdown)
+backend/
+  sac/          # sessão, prompts, orchestrator
+  rag/          # BM25 index e loader
+  personas/     # CRUD profiles/skills
+  llm/          # cliente LM Studio
+frontend/src/   # React UI TRUEPALEO
+personas/       # cliente/ e sac/ (Markdown)
+knowledge/      # base RAG
 config.yaml
-scripts/                             ← install, build, preparar-app
-tests/                               ← pytest + E2E integration
 ```

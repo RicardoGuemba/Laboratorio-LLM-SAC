@@ -26,3 +26,4 @@ bash scripts/preparar-app.sh
 
 echo ""
 echo "==> Pronto! Duplo clique em: Abrir Laboratorio Personas LLM.app"
+echo "    (Se não iniciar, rode: bash scripts/install_deps.sh)"

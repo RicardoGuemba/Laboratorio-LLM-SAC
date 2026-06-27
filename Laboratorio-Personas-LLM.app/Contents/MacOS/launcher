@@ -40,6 +40,17 @@ health_ok() {
     curl -sf "http://${HOST}:${PORT}/health" >/dev/null 2>&1
 }
 
+api_compatible() {
+    curl -sf "http://${HOST}:${PORT}/health" 2>/dev/null | grep -q '"manual_complaint"' \
+        || curl -sf "http://${HOST}:${PORT}/openapi.json" 2>/dev/null | grep -q '"/api/sac/{session_id}/respond"'
+}
+
+stop_listeners_on_port() {
+    while read -r stale_pid; do
+        [[ -n "$stale_pid" ]] && stop_pid "$stale_pid"
+    done < <(port_pids)
+}
+
 port_pids() {
     lsof -ti "tcp:${PORT}" -sTCP:LISTEN 2>/dev/null || true
 }
@@ -60,10 +71,17 @@ open_app() {
     echo "Laboratório disponível em http://${HOST}:${PORT}"
 }
 
-# Servidor já saudável — reutiliza instância existente.
-if health_ok; then
+# Servidor já saudável e com API atual — reutiliza instância existente.
+if health_ok && api_compatible; then
     open_app
     exit 0
+fi
+
+# Servidor antigo (sem reclamação manual) — reinicia.
+if health_ok && ! api_compatible; then
+    echo "Servidor desatualizado (sem /respond) — reiniciando..."
+    stop_listeners_on_port
+    sleep 0.5
 fi
 
 # Encerra instâncias registradas e processos presos na porta.
@@ -77,13 +95,6 @@ done
 while read -r stale_pid; do
     [[ -n "$stale_pid" ]] && stop_pid "$stale_pid"
 done < <(port_pids)
-
-sleep 0.5
-
-if health_ok; then
-    open_app
-    exit 0
-fi
 
 PYTHON=""
 for candidate in \
@@ -107,6 +118,21 @@ if [[ ! -d "$VENV" ]]; then
     notify "Criando ambiente Python (primeira execução)..."
     "$PYTHON" -m venv "$VENV"
     "$VENV/bin/pip" install -q -r "$ROOT/requirements.txt"
+else
+    # Venv copiado de outro projeto ou deps desatualizadas (ex.: rank-bm25)
+    if ! "$VENV/bin/python3" -c "import rank_bm25" 2>/dev/null; then
+        notify "Atualizando dependências Python..."
+        if ! "$VENV/bin/pip" install -q -r "$ROOT/requirements.txt" 2>/dev/null; then
+            echo "pip falhou — recriando .venv"
+            rm -rf "$VENV"
+            "$PYTHON" -m venv "$VENV"
+            "$VENV/bin/pip" install -q -r "$ROOT/requirements.txt"
+        fi
+    fi
+    if ! "$VENV/bin/python3" -c "import rank_bm25" 2>/dev/null; then
+        alert "Falha ao instalar dependências. Rode no Terminal: bash scripts/install_deps.sh"
+        exit 1
+    fi
 fi
 
 if [[ ! -f "$ROOT/backend/static/index.html" ]]; then

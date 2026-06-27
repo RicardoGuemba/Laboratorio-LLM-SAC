@@ -1,22 +1,28 @@
-import type { DebaterId, PersonasConfig } from "../types";
+import type { PersonasConfig, RoleId } from "../types";
+
+const ROLE_DISPLAY: Record<RoleId, string> = {
+  cliente: "Cliente",
+  sac: "SAC",
+};
+
+export function roleDisplayName(role: RoleId): string {
+  return ROLE_DISPLAY[role];
+}
 
 export function profileDisplayName(
-  personas: PersonasConfig | null | undefined,
-  debater: DebaterId,
+  config: PersonasConfig | null,
+  role: RoleId,
   profileId: string,
 ): string {
-  if (!profileId) return "";
-  const fromCatalog = personas?.[debater]?.profiles[profileId]?.name;
-  if (fromCatalog?.trim()) return fromCatalog.trim();
-  return profileId.replace(/_/g, " ");
+  if (!config || !profileId) return roleDisplayName(role);
+  const profile = config[role]?.profiles?.[profileId];
+  return profile?.name ?? profileId;
 }
 
 export function resolveCharacterName(
-  personas: PersonasConfig | null | undefined,
-  debater: DebaterId,
+  config: PersonasConfig | null,
+  role: RoleId,
   profileId: string,
-  apiName?: string | null,
 ): string {
-  if (apiName?.trim()) return apiName.trim();
-  return profileDisplayName(personas, debater, profileId);
+  return profileDisplayName(config, role, profileId);
 }
