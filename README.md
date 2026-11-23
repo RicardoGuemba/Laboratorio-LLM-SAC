@@ -1,6 +1,10 @@
-# TRUEPALEO SAC Simulator
+# Simulação de atendimento com modelos locais
 
 Simulador de atendimento ao cliente (SAC) da **TRUEPALEO**: o LLM `cliente_truepaleo` gera reclamações realistas e o `Truepaleo-SAC` responde usando skills configuráveis e RAG BM25 sobre histórico do Reclame AQUI.
+
+**Arquivos de referência**
+
+- [config.yaml](config.yaml)
 
 ## Início rápido
 
